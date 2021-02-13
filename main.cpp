@@ -9,6 +9,7 @@
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/wdt.h>
 #include <util/delay.h>
 
 #include <system/system.h>
@@ -21,6 +22,9 @@
 OneWire blue_wire;
 I2C i2c;
 
+#define LED_bp 1 //PA1
+#define LED_bm (1<<LED_bp)
+
 int main(void)
 {
 	system_init();
@@ -31,8 +35,9 @@ int main(void)
 	blue_wire.init(25000);
 	
 	uint8_t *i2c_regs = heater.get_i2c_regs();
+	uint8_t i2c_size = heater.get_i2c_regs_len();
 	
-	i2c.init(i2c_regs, 31);
+	i2c.init(i2c_regs, i2c_size);
 	
 	// Enable interrupts
 	sei();
@@ -41,8 +46,10 @@ int main(void)
 		
 	uint32_t start_time = timer.millis();
 	uint32_t last_read = 0;
+	
     while (1) 
     {
+	    wdt_reset();
 	    if(timer.millis() - start_time >= 800) 
 		{
 		    start_time = timer.millis();

@@ -10,10 +10,9 @@
 #include <avr/interrupt.h>
 #include <string.h>
 
-#warning To-Do: update these for tiny
 #define OW_USART		USART0
-#define OW_TX_PORT		PORTA
-#define OW_TX_PINCTRL	PIN0CTRL
+#define OW_TX_PORT		PORTB
+#define OW_TX_PINCTRL	PIN2CTRL
 #define OW_RX_ISR_VECT	USART0_RXC_vect
 
 #define RX_BUFF_SIZE	64
@@ -39,6 +38,8 @@ void OneWire::init(uint32_t baud_rate)
 	OW_USART.CTRLA = USART_LBME_bm | USART_RXCIE_bm;
 	// Enable transmision and reception buffers, and enable open drain
 	OW_USART.CTRLB = USART_TXEN_bm | USART_RXEN_bm | USART_ODME_bm;
+	
+	_rx_counter = 0;
 }
 
 uint8_t OneWire::available()

@@ -20,7 +20,7 @@ enum twi_state_t {
 	MASTER_WRITE,
 	MASTER_WRITE_ADDR,
 	MASTER_WRITE_ADDR_DONE
-	};
+};
 
 twi_state_t twi_state = IDLE;
 
@@ -89,26 +89,12 @@ ISR(TWI0_TWIS_vect)
 			// Master write
 			else 
 			{
-				/*
-				if(twi_state == MASTER_WRITE || twi_state == MASTER_WRITE_ADDR || twi_state == MASTER_WRITE_ADDR_DONE)
-				{
-					// Repeated start no change in direction, unexpected but legal
-					// Don't change TWI state
-					// Ack and wait for data interrupt
-					TWI0.SCTRLB = TWI_SCMD_RESPONSE_gc;
-					return;
-				}
-				else
-				{
-					*/
-					// Either repeated start with switch from read to write, or normal start
-					// Either way, wait for reg address write
-					twi_state = MASTER_WRITE_ADDR;
-					// Ack and wait for data interrupt (no need to write to ctrl B as we're using smart mode)
-					TWI0.SCTRLB = TWI_SCMD_RESPONSE_gc;
-					return;
-					
-				//}
+				// Either repeated start with switch from read to write, or normal start
+				// Either way, wait for reg address write
+				twi_state = MASTER_WRITE_ADDR;
+				// Ack and wait for data interrupt (no need to write to ctrl B as we're using smart mode)
+				TWI0.SCTRLB = TWI_SCMD_RESPONSE_gc;
+				return;
 			}
 		}
 		// Stop condition

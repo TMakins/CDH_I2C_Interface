@@ -31,7 +31,6 @@ uint32_t Timer::millis()
 ISR(TCB0_INT_vect) 
 {
 	timer.tick_ms++;
-	
 	TCB0.INTFLAGS = TCB_CAPT_bm;
 }
 

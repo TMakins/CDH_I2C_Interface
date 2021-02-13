@@ -8,6 +8,7 @@
 #include "heater.h"
 #include <one_wire/one_wire.h>
 #include <crc/crc.h>
+#include <avr/io.h>
 
 //#include <debug/debug.h>
 #include <stdio.h>
@@ -23,6 +24,10 @@
 
 #define MODE_HZ				0xCD
 #define MODE_TEMP			0x32
+
+// Config A bit positions
+#define CFG_A_HEATER_STORE	0 // store the value in heater eeprom, i.e. mimic LCD not rotary
+
 
 enum act_state {
 	HTR_OFF,
@@ -58,41 +63,44 @@ enum run_state {
 typedef struct {
 	struct {
 		struct {
-			uint8_t state; // 0 - off, 1 - on, 2 - prime (see enum)
-			uint8_t mode; // 0 = fixed Hz, 1 = temp mode
-			uint8_t current_temp; // 0 in Hz mode, otherwise 1C/digit
-			uint8_t desired_temp; // 1C / digit
-			uint8_t desired_hz; // 0.1Hz / digit
-			uint16_t altitude; // m
+			uint8_t state; //				0			0 - off, 1 - on, 2 - prime (see enum)
+			uint8_t mode; //				1			0 = fixed Hz, 1 = temp mode
+			uint8_t current_temp; //		2			0 in Hz mode, otherwise 1C/digit
+			uint8_t desired_temp; //		3			1C / digit
+			uint8_t desired_hz; //			4			0.1Hz / digit
+			uint16_t altitude; //			5,6			m
 		} control;
 		struct {
-			uint8_t max_pump_freq; // 0.1Hz / digit
-			uint8_t min_pump_freq; // 0.1Hz / digit
-			uint16_t min_fan_speed; // 1RPM / digit
-			uint16_t max_fan_speed; // 1RPM / digit
-			uint8_t operating_voltage; // 0.1V / digit
-			uint8_t num_fan_magnets;
-			uint8_t glow_plug_power; // 1 - 6
+			uint8_t min_pump_freq; //		7			0.1Hz / digit
+			uint8_t max_pump_freq; //		8			0.1Hz / digit
+			uint16_t min_fan_speed; //		9, 10		1RPM / digit
+			uint16_t max_fan_speed; //		11,12		1RPM / digit
+			uint8_t operating_voltage; //	13			0.1V / digit
+			uint8_t num_fan_magnets; //		14			1 or 2
+			uint8_t glow_plug_power; //		15			1 - 6
 		} config;
 	} controller;
 	struct {
-		uint8_t on; // 0 - off, 1 - on, 2 - disconnected
-		uint8_t run_state; // 0 - 8
-		uint16_t voltage; // 0.1V / digit
-		uint16_t fan_rpm; // 1RPM / digit
-		uint16_t fan_voltage; // 0.1V / digit
-		uint16_t body_temp; // 0.1C / digit
-		uint16_t glow_plug_voltage; // 0.1V / digit
-		uint16_t glow_plug_current; // 10mA / digit
-		uint8_t current_pump_hz; // 0.1Hz / digit
-		uint8_t requested_pump_hz; // 0.1Hz / digit
-		uint8_t error_code;
+		uint8_t on; //						16			0 - off, 1 - on, 2 - disconnected
+		uint8_t run_state; //				17			0 - 8
+		uint16_t voltage; //				18, 19		0.1V / digit
+		uint16_t fan_rpm; //				20, 21		1RPM / digit
+		uint16_t fan_voltage; //			22, 23		0.1V / digit
+		uint16_t body_temp; //				24, 25		0.1C / digit
+		uint16_t glow_plug_voltage; //		26, 27		0.1V / digit
+		uint16_t glow_plug_current; //		28, 29		10mA / digit
+		uint8_t current_pump_hz; //			30			0.1Hz / digit
+		uint8_t requested_pump_hz; //		31			0.1Hz / digit
+		uint8_t error_code;	//				32			
 	} heater;
+	struct {
+		uint8_t config_a; //				33
+	} settings;
 } i2c_reg_t;
 
 union i2c_regs {
 	i2c_reg_t regs;
-	uint8_t data[31];
+	uint8_t data[33];
 } i2c_regs;
 
 typedef struct tx_packet {
@@ -176,6 +184,12 @@ Heater::Heater()
 	i2c_regs.regs.controller.config.operating_voltage = 120;
 	i2c_regs.regs.controller.config.num_fan_magnets = 1;
 	i2c_regs.regs.controller.config.glow_plug_power = 5;
+	// Settings
+	i2c_regs.regs.settings.config_a = (1 << CFG_A_HEATER_STORE) | 0;
+	
+	// Setup LED as output
+	PORTA.DIRSET = 1 << 1;
+	PORTA.OUTCLR = 1 << 1;
 }
 
 uint8_t* Heater::get_i2c_regs()
@@ -183,9 +197,17 @@ uint8_t* Heater::get_i2c_regs()
 	return i2c_regs.data;
 }
 
+uint8_t Heater::get_i2c_regs_len()
+{
+	return sizeof(i2c_regs.data);
+}
+
 void Heater::process_rx_packet(uint8_t* data)
 {
+	// Connected again
 	_connected = 1;	
+	// Set LED1 on
+	PORTA.OUTSET = 1 << 1;
 	
 	packet packet;
 	memcpy(packet.buff, data, 24);
@@ -228,7 +250,7 @@ uint8_t* Heater::prepare_tx_packet()
 	static packet packet;
 	
 	// Fixed bytes
-	packet.tx_data.sof = 0x76;
+	packet.tx_data.sof = (regs.settings.config_a & (1 << CFG_A_HEATER_STORE)) ? 0x76 : 0x78;
 	packet.tx_data.size = 0x16;
 	packet.tx_data.min_temp = 0x08;
 	packet.tx_data.max_temp = 0x23;
@@ -315,7 +337,7 @@ uint8_t* Heater::prepare_tx_packet()
 	packet.tx_data.altitude_msb = (regs.controller.control.altitude >> 8) & 0xFF;
 	packet.tx_data.altitude_lsb = regs.controller.control.altitude & 0xFF;
 	
-	// Finally, CRC
+	// Finally, CRC`
 	uint16_t crc = generate_crc(packet.buff, 22);
 	packet.tx_data.crc_msb = (crc >> 8) & 0xFF;
 	packet.tx_data.crc_lsb = crc & 0xFF;
@@ -326,8 +348,9 @@ uint8_t* Heater::prepare_tx_packet()
 void Heater::disconnected()
 {
 	_connected = 0;
-	
 	i2c_regs.regs.heater.on = HTR_DISCONNECTED;
+	// Set LED1 off
+	PORTA.OUTCLR = 1 << 1;
 }
 
 Heater heater = Heater();

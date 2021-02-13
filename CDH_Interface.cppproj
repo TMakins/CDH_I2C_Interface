@@ -40,6 +40,22 @@
   </dependencies>
 </framework-data>
     </AsfFrameworkConfig>
+    <avrtool>com.atmel.avrdbg.tool.nedbg</avrtool>
+    <avrtoolserialnumber>MCHP3094081800005595</avrtoolserialnumber>
+    <avrdeviceexpectedsignature>0x1E9422</avrdeviceexpectedsignature>
+    <avrtoolinterface>UPDI</avrtoolinterface>
+    <com_atmel_avrdbg_tool_nedbg>
+      <ToolOptions>
+        <InterfaceProperties>
+          <UpdiClock>750000</UpdiClock>
+        </InterfaceProperties>
+        <InterfaceName>UPDI</InterfaceName>
+      </ToolOptions>
+      <ToolType>com.atmel.avrdbg.tool.nedbg</ToolType>
+      <ToolNumber>MCHP3094081800005595</ToolNumber>
+      <ToolName>nEDBG</ToolName>
+    </com_atmel_avrdbg_tool_nedbg>
+    <avrtoolinterfaceclock>750000</avrtoolinterfaceclock>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
@@ -187,6 +203,9 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\protected_io\protected_io.s">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="src\system\system.cpp">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="src\system\system.h">
