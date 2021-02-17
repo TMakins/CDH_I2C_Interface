@@ -86,21 +86,22 @@ typedef struct {
 		uint16_t voltage; //				18, 19		0.1V / digit
 		uint16_t fan_rpm; //				20, 21		1RPM / digit
 		uint16_t fan_voltage; //			22, 23		0.1V / digit
-		uint16_t body_temp; //				24, 25		0.1C / digit
+		uint16_t body_temp; //				24, 25		1C / digit
 		uint16_t glow_plug_voltage; //		26, 27		0.1V / digit
 		uint16_t glow_plug_current; //		28, 29		10mA / digit
 		uint8_t current_pump_hz; //			30			0.1Hz / digit
 		uint8_t requested_pump_hz; //		31			0.1Hz / digit
 		uint8_t error_code;	//				32			
+		uint8_t last_error; //				33
 	} heater;
 	struct {
-		uint8_t config_a; //				33
+		uint8_t config_a; //				34
 	} settings;
 } i2c_reg_t;
 
 union i2c_regs {
 	i2c_reg_t regs;
-	uint8_t data[33];
+	uint8_t data[34];
 } i2c_regs;
 
 typedef struct tx_packet {
@@ -187,6 +188,9 @@ Heater::Heater()
 	// Settings
 	i2c_regs.regs.settings.config_a = (1 << CFG_A_HEATER_STORE) | 0;
 	
+	// Heater 
+	i2c_regs.regs.heater.on = HTR_DISCONNECTED;
+	
 	// Setup LED as output
 	PORTA.DIRSET = 1 << 1;
 	PORTA.OUTCLR = 1 << 1;
@@ -237,14 +241,15 @@ void Heater::process_rx_packet(uint8_t* data)
 	
 	i2c_regs.regs.heater.current_pump_hz = packet.rx_data.pump_frequency;
 	
-	i2c_regs.regs.heater.error_code = packet.rx_data.error_code;
+	i2c_regs.regs.heater.error_code = packet.rx_data.error_state;
+	
+	i2c_regs.regs.heater.last_error = packet.rx_data.error_code;
 	
 	i2c_regs.regs.heater.requested_pump_hz = packet.rx_data.requested_hz;
 }
 
 uint8_t* Heater::prepare_tx_packet()
 {	
-	// Copy data so data doesn't change midway with I2C ISR
 	i2c_reg_t regs = i2c_regs.regs;
 	
 	static packet packet;

@@ -68,6 +68,9 @@ int main(void)
 		if((timer.millis() - last_read) >= 2400)
 		{
 			heater.disconnected();
+			// Clear buffers and restart timer
+			blue_wire.clear_rx();
+			last_read = timer.millis();
 		}
     }
 }
