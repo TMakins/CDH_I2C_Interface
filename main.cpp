@@ -50,7 +50,7 @@ int main(void)
     while (1) 
     {
 	    wdt_reset();
-	    if(timer.millis() - start_time >= 800) 
+	    if(timer.millis() - start_time >= 1000) 
 		{
 		    start_time = timer.millis();
 			uint8_t* data_out = heater.prepare_tx_packet();
@@ -65,11 +65,11 @@ int main(void)
 			heater.process_rx_packet(data_in);
 		}
 		
-		if((timer.millis() - last_read) >= 2400)
+		if((timer.millis() - last_read) >= 3000)
 		{
 			heater.disconnected();
-			// Clear buffers and restart timer
-			blue_wire.clear_rx();
+			// Reset USART
+			blue_wire.reset();
 			last_read = timer.millis();
 		}
     }

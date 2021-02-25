@@ -20,11 +20,13 @@ class OneWire
 	void read(uint8_t *buff, uint8_t len);
 	void write(uint8_t *buff, uint8_t len);
 	void clear_rx();
+	void reset();
 	
 	private:
 	void _tx_reset();
 	bool _tx_ready();
 	void _rx_disable();
+	void _tx_disable();
 	void _rx_enable();
 	bool _tx_complete();
 };

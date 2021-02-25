@@ -11,6 +11,11 @@
 
 #include <stdint.h>
 
+typedef enum save_reason {
+	WATCHDOG = 0,
+	NO_CONNECTION,
+} save_reason_t;
+
 class Heater
 {
 	public:
@@ -21,6 +26,7 @@ class Heater
 	uint8_t* get_i2c_regs();
 	uint8_t get_i2c_regs_len();
 	void disconnected();
+	void save_to_eeprom(save_reason_t reason);
 	
 	uint8_t _connected;
 };

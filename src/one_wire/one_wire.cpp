@@ -8,6 +8,7 @@
 #include "one_wire.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <util/delay.h>
 #include <string.h>
 
 #define OW_USART		USART0
@@ -15,7 +16,7 @@
 #define OW_TX_PINCTRL	PIN2CTRL
 #define OW_RX_ISR_VECT	USART0_RXC_vect
 
-#define RX_BUFF_SIZE	64
+#define RX_BUFF_SIZE	128
 
 uint8_t _rx_data[RX_BUFF_SIZE];
 uint8_t _rx_counter = 0;
@@ -73,6 +74,11 @@ void OneWire::write(uint8_t *buff, uint8_t len)
 void OneWire::clear_rx()
 {
 	_rx_counter = 0;
+	// Flush buffer
+	while (OW_USART.RXDATAH  & USART_RXCIF_bm)
+	{
+		OW_USART.RXDATAL;
+	}
 }
 
 void OneWire::_tx_reset()
@@ -83,6 +89,11 @@ void OneWire::_tx_reset()
 bool OneWire::_tx_ready() 
 {
 	return (OW_USART.STATUS  & USART_DREIF_bm);
+}
+
+void OneWire::_tx_disable()
+{
+	OW_USART.CTRLB &= ~USART_TXCIF_bm;
 }
 
 void OneWire::_rx_disable()
@@ -100,8 +111,29 @@ bool OneWire::_tx_complete()
 	return (OW_USART.STATUS & USART_TXCIF_bm);
 }
 
+void OneWire::reset() 
+{
+	// Reset counter
+	_rx_counter = 0;
+	// Flush buffer
+	while (OW_USART.RXDATAH  & USART_RXCIF_bm)
+	{
+		OW_USART.RXDATAL;
+	}	
+	// Disable rx and tx to clear interrupts
+	_rx_disable();
+	_tx_disable();
+	// Delay for good measure
+	_delay_ms(100);
+	// Re-enable rx
+	_rx_enable();
+}
+
+
 ISR(OW_RX_ISR_VECT)
 {
 	if(_rx_counter < RX_BUFF_SIZE)
 		_rx_data[_rx_counter++] = OW_USART.RXDATAL;
+	else
+		OW_USART.RXDATAL; // read to clear
 }

@@ -9,6 +9,7 @@
 #include <one_wire/one_wire.h>
 #include <crc/crc.h>
 #include <avr/io.h>
+#include <avr/eeprom.h>
 
 //#include <debug/debug.h>
 #include <stdio.h>
@@ -356,6 +357,14 @@ void Heater::disconnected()
 	i2c_regs.regs.heater.on = HTR_DISCONNECTED;
 	// Set LED1 off
 	PORTA.OUTCLR = 1 << 1;
+}
+
+void Heater::save_to_eeprom(save_reason_t reason)
+{
+	eeprom_busy_wait();
+	eeprom_write_byte((uint8_t *)0, reason);
+	eeprom_write_block(i2c_regs.data, (uint8_t *)1, sizeof(i2c_regs.data));
+	eeprom_busy_wait();
 }
 
 Heater heater = Heater();
