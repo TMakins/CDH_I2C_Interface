@@ -47,6 +47,8 @@ int main(void)
 	uint32_t start_time = timer.millis();
 	uint32_t last_read = 0;
 	
+	heater.init(); 	
+	
     while (1) 
     {
 	    wdt_reset();

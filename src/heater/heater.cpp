@@ -10,6 +10,7 @@
 #include <crc/crc.h>
 #include <avr/io.h>
 #include <avr/eeprom.h>
+#include <i2c/i2c.h>
 
 //#include <debug/debug.h>
 #include <stdio.h>
@@ -29,6 +30,8 @@
 // Config A bit positions
 #define CFG_A_HEATER_STORE	0 // store the value in heater eeprom, i.e. mimic LCD not rotary
 
+// Status A bit positions
+#define STATUS_A_READY		0 // heater ready, 1 when ready
 
 enum act_state {
 	HTR_OFF,
@@ -97,12 +100,13 @@ typedef struct {
 	} heater;
 	struct {
 		uint8_t config_a; //				34
+		uint8_t status_a; //				35
 	} settings;
 } i2c_reg_t;
 
 union i2c_regs {
 	i2c_reg_t regs;
-	uint8_t data[34];
+	uint8_t data[36];
 } i2c_regs;
 
 typedef struct tx_packet {
@@ -170,6 +174,9 @@ Heater::Heater()
 	// Set all to zero just to be sure
 	memset(i2c_regs.data, 0, sizeof(i2c_regs.data));
 	
+	// Indicate heater status as disconnected until init is called
+	i2c_regs.regs.settings.status_a &= ~(1 << STATUS_A_READY);
+	
 	// Setup defaults
 	// Heater control
 	i2c_regs.regs.controller.control.state = 0;
@@ -195,6 +202,12 @@ Heater::Heater()
 	// Setup LED as output
 	PORTA.DIRSET = 1 << 1;
 	PORTA.OUTCLR = 1 << 1;
+}
+
+void Heater::init()
+{
+	// Indicate heater status is connected
+	i2c_regs.regs.settings.status_a |= (1 << STATUS_A_READY);
 }
 
 uint8_t* Heater::get_i2c_regs()
