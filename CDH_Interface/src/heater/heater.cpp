@@ -34,9 +34,9 @@
 #define STATUS_A_READY		0 // heater ready, 1 when ready
 
 enum act_state {
+	HTR_DISCONNECTED,
 	HTR_OFF,
 	HTR_ON,
-	HTR_DISCONNECTED,
 };
 
 enum state {
