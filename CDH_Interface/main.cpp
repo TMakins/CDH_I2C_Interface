@@ -34,10 +34,7 @@ int main(void)
 	blue_wire = OneWire();
 	blue_wire.init(25000);
 	
-	uint8_t *i2c_regs = heater.get_i2c_regs();
-	uint8_t i2c_size = heater.get_i2c_regs_len();
-	
-	i2c.init(i2c_regs, i2c_size);
+	i2c.init(i2c_regs.data, sizeof(i2c_regs.data));
 	
 	// Enable interrupts
 	sei();
