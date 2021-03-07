@@ -76,6 +76,8 @@ class Heater
 	void save_to_eeprom(save_reason_t reason);
 	
 	uint8_t _connected;
+	uint8_t _force_stop;
+	uint8_t _last_run_state;
 };
 
 extern Heater heater;
