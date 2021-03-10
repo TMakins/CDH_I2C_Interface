@@ -201,7 +201,7 @@ void Heater::init()
 	{
 		rst_num = 5;
 	}
-	i2c_regs.regs.settings.status_a |= (rst_num << STATUS_A_RESEST_REASON);
+	i2c_regs.regs.settings.status_a |= (rst_num << STATUS_A_RESET_REASON);
 }
 
 void Heater::process_rx_packet(uint8_t* data)
