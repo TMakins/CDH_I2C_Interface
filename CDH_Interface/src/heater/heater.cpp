@@ -31,8 +31,8 @@
 #define CFG_A_HEATER_STORE		0 // store the value in heater eeprom, i.e. mimic LCD not rotary
 
 // Status A bit positions
-#define STATUS_A_READY			0 // heater ready, 1 when ready
-#define STATUS_A_RESET_REASON	1 // reset reason (see datasheet)
+#define STATUS_A_READY			0 // bit 0 heater ready, 1 when ready
+#define STATUS_A_RESEST_REASON	1 // bits 1-3 reset reason (see datasheet)
 
 enum act_state {
 	HTR_DISCONNECTED,
@@ -296,8 +296,8 @@ uint8_t* Heater::prepare_tx_packet()
 	// Fixed bytes
 	packet.tx_data.sof = (regs.settings.config_a & (1 << CFG_A_HEATER_STORE)) ? 0x76 : 0x78;
 	packet.tx_data.size = 0x16;
-	packet.tx_data.min_temp = 0x08;
-	packet.tx_data.max_temp = 0x23;
+	packet.tx_data.min_temp = 0;
+	packet.tx_data.max_temp = 40;
 	packet.tx_data.unknown_1 = 0xEB;
 	packet.tx_data.unknown_2 = 0x47;
 	
@@ -363,8 +363,8 @@ uint8_t* Heater::prepare_tx_packet()
 		uint8_t min_p = regs.controller.config.min_pump_freq;
 		uint8_t max_p = regs.controller.config.max_pump_freq;
 		uint8_t desired_hz = regs.controller.control.desired_hz;
-		// Magic nums are min and max heater temp (hardcoded values) + 0.5 to round to nearest int
-		packet.tx_data.desired_temp = (uint8_t)((((float)(desired_hz - min_p) / (float)(max_p - min_p)) * (35.0 - 8.0)) + 8.5);
+		// Magic nums is max heater temp, min of zero is omitted
+		packet.tx_data.desired_temp = (uint8_t)((((float)(desired_hz - min_p) / (float)(max_p - min_p)) * 40) + 1);
 		
 		packet.tx_data.mode = MODE_HZ;
 		packet.tx_data.temp = 0; // fixed hz mode, actual temp forced to 0
