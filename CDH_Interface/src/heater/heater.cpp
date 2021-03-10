@@ -206,8 +206,6 @@ void Heater::init()
 
 void Heater::process_rx_packet(uint8_t* data)
 {
-	i2c_reg_t regs = i2c_regs.regs;
-	
 	// Connected again
 	_connected = 1;	
 	// Set LED1 on
@@ -223,54 +221,54 @@ void Heater::process_rx_packet(uint8_t* data)
 		return;
 	}
 	
-	regs.heater.on = (packet.rx_data.error_state == 1) ? HTR_ON : HTR_OFF; // 0x01 when running normally, 0 off, others error states
+	i2c_regs.regs.heater.on = (packet.rx_data.error_state == 1) ? HTR_ON : HTR_OFF; // 0x01 when running normally, 0 off, others error states
 	
-	regs.heater.voltage = (packet.rx_data.supply_voltage_msb << 8) | (packet.rx_data.supply_voltage_lsb);
+	i2c_regs.regs.heater.voltage = (packet.rx_data.supply_voltage_msb << 8) | (packet.rx_data.supply_voltage_lsb);
 	
-	regs.heater.fan_rpm = (packet.rx_data.fan_speed_msb << 8) | (packet.rx_data.fan_speed_lsb);
+	i2c_regs.regs.heater.fan_rpm = (packet.rx_data.fan_speed_msb << 8) | (packet.rx_data.fan_speed_lsb);
 	
-	regs.heater.fan_voltage = (packet.rx_data.fan_voltage_msb << 8) | (packet.rx_data.fan_voltage_lsb);
+	i2c_regs.regs.heater.fan_voltage = (packet.rx_data.fan_voltage_msb << 8) | (packet.rx_data.fan_voltage_lsb);
 	
-	regs.heater.body_temp = (packet.rx_data.body_temp_msb << 8) | (packet.rx_data.body_temp_lsb);
+	i2c_regs.regs.heater.body_temp = (packet.rx_data.body_temp_msb << 8) | (packet.rx_data.body_temp_lsb);
 	
-	regs.heater.glow_plug_voltage = (packet.rx_data.glow_plug_voltage_msb << 8) | (packet.rx_data.glow_plug_voltage_lsb);
+	i2c_regs.regs.heater.glow_plug_voltage = (packet.rx_data.glow_plug_voltage_msb << 8) | (packet.rx_data.glow_plug_voltage_lsb);
 	
-	regs.heater.glow_plug_current = (packet.rx_data.glow_plug_current_msb << 8) | (packet.rx_data.glow_plug_current_lsb);
+	i2c_regs.regs.heater.glow_plug_current = (packet.rx_data.glow_plug_current_msb << 8) | (packet.rx_data.glow_plug_current_lsb);
 	
-	regs.heater.current_pump_hz = packet.rx_data.pump_frequency;
+	i2c_regs.regs.heater.current_pump_hz = packet.rx_data.pump_frequency;
 	
 	
 	// Interpreted state, igniting but no pump activity
-	regs.heater.run_state = packet.rx_data.run_state;
-	if(regs.heater.run_state == IGNITING && regs.heater.current_pump_hz == 0)
+	i2c_regs.regs.heater.run_state = packet.rx_data.run_state;
+	if(i2c_regs.regs.heater.run_state == IGNITING && i2c_regs.regs.heater.current_pump_hz == 0)
 	{
-		regs.heater.run_state = PREHEATING;
+		i2c_regs.regs.heater.run_state = PREHEATING;
 	}
 	
 	if(!_connected)
 	{
-		regs.heater.error_code = DISCONNECTED_ERROR_CODE;
+		i2c_regs.regs.heater.error_code = DISCONNECTED_ERROR_CODE;
 	}
 	else if(packet.rx_data.error_state == 0) 
 	{
-		regs.heater.error_code = 0;
+		i2c_regs.regs.heater.error_code = 0;
 	}
 	else 
 	{
-		regs.heater.error_code = packet.rx_data.error_state - 1;
+		i2c_regs.regs.heater.error_code = packet.rx_data.error_state - 1;
 	}
 	
-	regs.heater.last_error = packet.rx_data.error_code;
+	i2c_regs.regs.heater.last_error = packet.rx_data.error_code;
 	
-	regs.heater.requested_pump_hz = packet.rx_data.requested_hz;
+	i2c_regs.regs.heater.requested_pump_hz = packet.rx_data.requested_hz;
 	
 	// Check for strange pump frequencies - allow it to go over by 1Hz
-	if(regs.heater.current_pump_hz > regs.controller.config.max_pump_freq + 10)
+	if(i2c_regs.regs.heater.current_pump_hz > i2c_regs.regs.controller.config.max_pump_freq + 10)
 	{
 		// Shutdown and report error
 		_force_stop = 1;
-		regs.heater.error_code = PUMP_RUNAWAY;
-		regs.heater.last_error = PUMP_RUNAWAY;
+		i2c_regs.regs.heater.error_code = PUMP_RUNAWAY;
+		i2c_regs.regs.heater.last_error = PUMP_RUNAWAY;
 	}
 }
 

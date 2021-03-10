@@ -1,16 +1,59 @@
+/*
+ *  SPIFFS_hz_control.ino
+ *  ---------------------
+ *  Copyright(C) 2021 Toby Makins
+ *  toby@makins.org.uk
+ *
+ *  Intended platform: ESP32 
+ * 
+ *  Example sketch demonstrating a SPIFFS stored webpage for controlling a Chinese
+ *  Diesel Heater using the CDHInterface library. This sketch implements a webpage 
+ *  allowing a user to start and stop a heater, adjust the pump frequency and see
+ *  the temperature of the heaters heat exchangers. 
+ *
+ *  For more info, see the GitHub repository here: https://github.com/TMakins/CDHInterface
+ *
+ *  This file is part of the CDHInterface library. 
+ *  
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ * 
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+
+#include <SPIFFS.h>
 #include <WiFi.h>
 #include <ESPmDNS.h>
 #include <WiFiUdp.h>
 #include <ArduinoOTA.h>
-#include <DieselHeater.h>
 #include <WebServer.h>
+#include <DieselHeater.h>
 
 DieselHeater heater;
 
+// The SSID and passkey for the AP
 const char* ssid = "Glide0183515-2G";
 const char* password = "07C8B1112E";
 
 WebServer server(80);
+
+// IMPORTANT - THESE MAY NOT BE CORRECT FOR YOUR HEATER
+// Change these to your current heater settings
+const float MIN_HZ = 1.6;
+const float MAX_HZ = 5.5;
+const uint16_t MIN_FAN_SPEED = 1680; 
+const uint16_t MAX_FAN_SPEED = 5000;
+
+float cur_hz = 2.2;
 
 void setup() {
   Serial.begin(115200);
@@ -22,17 +65,14 @@ void setup() {
     delay(5000);
     ESP.restart();
   }
+
   
   ArduinoOTA
     .onStart([]() {
       String type;
-      if (ArduinoOTA.getCommand() == U_FLASH)
-        type = "sketch";
-      else // U_SPIFFS
-        type = "filesystem";
-
-      // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-      Serial.println("Start updating " + type);
+      if (ArduinoOTA.getCommand() == U_SPIFFS) {
+        SPIFFS.end();
+      }
     })
     .onEnd([]() {
       Serial.println("\nEnd");
@@ -51,26 +91,35 @@ void setup() {
 
   ArduinoOTA.begin();
 
-  Serial.println("Ready");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
+  heater.init();
+  heater.setMinPumpHz(MIN_HZ);
+  heater.setMaxPumpHz(MAX_HZ);
+  heater.setMinFanSpeed(MIN_FAN_SPEED);
+  heater.setMaxFanSpeed(MAX_FAN_SPEED);
 
-  /* END OF OTA */
+  heater.usePumpHzMode();
+  heater.setDesiredPumpHz(cur_hz);
+
+  if (!SPIFFS.begin(true)) {
+    return;
+  }
 
   server.begin();
-  server.on("/", handleRoot);
 
-  heater.init();
-  heater.setMinPumpHz(1.6);
-  heater.setMaxPumpHz(5.5);
-  heater.setMinFanSpeed(1680);
-  heater.setMaxFanSpeed(3500);
-  
+  // Catch all for all
+  server.on("/", handleRoot);
+  server.onNotFound(handleWebRequests);
 }
 
+// Root is the controller, so serve index.html with our placeholders replaced
+// and process any data sent to us via POST
 void handleRoot() {
   // Read posted data and process it
   for (uint8_t i = 0; i < server.args(); i++) {
+    if (server.argName(i) == "hz") {
+      cur_hz = server.arg(i).toFloat();
+      heater.setDesiredPumpHz(cur_hz);
+    }
     if (server.argName(i) == "state") {
       if (server.arg(i) == "off") {
         heater.turnOff();
@@ -81,30 +130,63 @@ void handleRoot() {
     }
   }
 
-  String html = "<html><head><title>Heater</title></head><body><div style=\"width:400px; margin: 0 auto;\"><h1>Basic debug and control</h1><ul>";
+  const char *run_state_str;
+  if (heater.hasError()) {
+    run_state_str = heater.getErrorDesc();
+  }
+  else {
+    run_state_str = heater.getRunStateDesc();
+  }
+
+  // Send response with placeholders replaced
+  File file = SPIFFS.open("/index.html");
+  String html = file.readString();
+  html.replace("%%MAX_HZ%%", String(MAX_HZ));
+  html.replace("%%MIN_HZ%%", String(MIN_HZ));
+  html.replace("%%CUR_HZ%%", String(cur_hz));
+  html.replace("%%ON_OFF%%", String(heater.isOn()));
+  html.replace("%%RUN_STATE%%", (heater.hasError()) ? heater.getErrorDesc() : heater.getRunStateDesc());
+  html.replace("%%BODY_TEMP%%", String(heater.getHeatExchangerTemp()));
   
-  html += "<li>Requested state: " + String(heater.getRequestedState()) + "</li>";
-  html += "<li>Actual state: " + String(heater.getHtrState()) + "</li>";
-  html += "<li>Supply voltage: " + String(heater.getSupplyVoltage()) + "</li>";
-  html += "<li>Min Hz: " + String(heater.getMinPumpHz()) + "</li>";
-  html += "<li>Max Hz: " + String(heater.getMaxPumpHz()) + "</li>";
-  html += "<li>Requested Hz: " + String(heater.getRequestedPumpHz()) + "</li>";
-  html += "<li>Current Hz: " + String(heater.getCurrentPumpHz()) + "</li>";
-  html += "<li>Glowplug current: " + String(heater.getGlowPlugCurrent()) + "</li>";
-  html += "<li>Glowplug voltage: " + String(heater.getGlowPlugVoltage()) + "</li>";
-  html += "<li>Min fan speed: " + String(heater.getMinFanSpeed()) + "</li>";
-  html += "<li>Max fan speed: " + String(heater.getMaxFanSpeed()) + "</li>";
-  html += "<li>Current fan speed: " + String(heater.getFanSpeed()) + "</li>";
-  html += "<li>Fan voltage: " + String(heater.getFanVoltage()) + "</li>";
-  html += "<li>Body temp: " + String(heater.getHeatExchangerTemp()) + "</li>";
-  
-  html += "</ul></div><form method=\"POST\">";
-  
-  html += "<button name=\"state\" value=\"on\">Turn on</html>";
-  html += "<button name=\"state\" value=\"off\">Turn off</html>";
-  
-  html += "</form></body></html>";
+  html.replace("%%ACT_MIN_HZ%%", String(heater.getMinPumpHz()));
+  html.replace("%%ACT_MAX_HZ%%", String(heater.getMaxPumpHz()));
+  html.replace("%%ACT_REQ_HZ%%", String(heater.getRequestedPumpHz()));
+  html.replace("%%ACT_HZ%%", String(heater.getCurrentPumpHz()));
+  html.replace("%%GP_CURRENT%%", String(heater.getGlowPlugCurrent()));
+  html.replace("%%GP_VOLTAGE%%", String(heater.getGlowPlugVoltage()));
+  html.replace("%%ACT_MAX_RPM%%", String(heater.getMaxFanSpeed()));
+  html.replace("%%ACT_MIN_RPM%%", String(heater.getMinFanSpeed()));
+  html.replace("%%FAN_SPEED%%", String(heater.getFanSpeed()));
+  html.replace("%%FAN_VOLTAGE%%", String(heater.getFanVoltage()));
+  html.replace("%%SUP_VOLTAGE%%", String(heater.getSupplyVoltage()));
+  file.close();
   server.send(200, "text/html", html);
+}
+
+
+// Act as a web server and serve the required files from SPIFFS
+// If you add additional file types to the demo (e.g. images), make sure to 
+// add them here too
+void handleWebRequests() {
+  String dataType = "text/plain";
+  String path = server.uri();
+  if (path.endsWith("/") || path.endsWith("index.html")) {
+    handleRoot();
+    return;
+  }
+
+  else if (path.endsWith(".css")) {
+    dataType = "text/css";
+  }
+  else if (path.endsWith(".js")) {
+    dataType = "application/javascript";
+  }
+  else if (path.endsWith(".svg")) {
+    dataType = "image/svg+xml";
+  }
+  File file = SPIFFS.open(path, "r");
+  server.streamFile(file, dataType);
+  file.close();
 }
 
 void loop() {
