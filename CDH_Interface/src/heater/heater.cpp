@@ -32,7 +32,7 @@
 
 // Status A bit positions
 #define STATUS_A_READY			0 // bit 0 heater ready, 1 when ready
-#define STATUS_A_RESEST_REASON	1 // bits 1-3 reset reason (see datasheet)
+#define STATUS_A_RESET_REASON	1 // bits 1-3 reset reason (see datasheet)
 
 enum act_state {
 	HTR_DISCONNECTED,
