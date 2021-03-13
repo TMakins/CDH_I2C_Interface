@@ -9,6 +9,8 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
+#include <timer/timer.h>
+#include <heater/heater.h>
 #include <string.h>
 
 #define OW_USART		USART0
@@ -59,15 +61,27 @@ void OneWire::read(uint8_t *buff, uint8_t len)
 	_rx_counter = 0;	
 }
 
+uint32_t start_time = 0;
 void OneWire::write(uint8_t *buff, uint8_t len) 
 {
 	_tx_reset();
 	_rx_disable();
-	for(uint8_t i = 0; i < len; i++) {
-		while(!_tx_ready());
+	for(uint8_t i = 0; i < len; i++) 
+	{
+		start_time = timer.millis();
+		while (!_tx_ready())
+		{
+			if(timer.millis() - start_time > 200)
+				reset();
+		}
 		OW_USART.TXDATAL = buff[i];
 	}
-	while (!_tx_complete());
+	start_time = timer.millis();
+	while (!_tx_complete())
+	{
+		if(timer.millis() - start_time > 200)
+			reset();
+	}
 	_rx_enable();
 }
 
@@ -113,6 +127,8 @@ bool OneWire::_tx_complete()
 
 void OneWire::reset() 
 {
+	i2c_regs.regs.settings.debug++;
+	
 	// Reset counter
 	_rx_counter = 0;
 	// Flush buffer

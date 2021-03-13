@@ -15,6 +15,7 @@ void system_init()
 	protected_write_io((void*)&(CLKCTRL.MCLKCTRLB), CCP_IOREG_gc, 0);
 	
 	// Setup watchdog
-	wdt_enable(WDTO_2S);
-	wdt_reset();
+	//wdt_enable(WDTO_8S);
+	//wdt_reset();
+	// Moved to fuse config
 }

@@ -176,30 +176,34 @@ void Heater::init()
 	
 	// Get reset reason
 	uint8_t rst = RSTCTRL.RSTFR;
-	uint8_t rst_num = 0;
-	if(rst & (1 << 0))
+	
+	// Clear reset
+	RSTCTRL.RSTFR = RSTCTRL_UPDIRF_bm | RSTCTRL_SWRF_bm | RSTCTRL_WDRF_bm | RSTCTRL_EXTRF_bm | RSTCTRL_BORF_bm | RSTCTRL_PORF_bm;
+	
+	uint8_t rst_num = 6;
+	if(rst & (1 << 5))
 	{
-		rst_num = 0;
-	}
-	else if(rst & (1 << 1))
-	{
-		rst_num = 1;
-	}
-	else if(rst & (1 << 2))
-	{
-		rst_num = 2;
-	}
-	else if(rst & (1 << 3))
-	{
-		rst_num = 3;
+		rst_num = 5;
 	}
 	else if(rst & (1 << 4))
 	{
 		rst_num = 4;
 	}
-	else if(rst & (1 << 5))
+	else if(rst & (1 << 3))
 	{
-		rst_num = 5;
+		rst_num = 3;
+	}
+	else if(rst & (1 << 2))
+	{
+		rst_num = 2;
+	}
+	else if(rst & (1 << 1))
+	{
+		rst_num = 1;
+	}
+	else if(rst & (1 << 0))
+	{
+		rst_num = 0;
 	}
 	i2c_regs.regs.settings.status_a |= (rst_num << STATUS_A_RESET_REASON);
 }

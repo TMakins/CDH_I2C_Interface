@@ -17,20 +17,25 @@ Timer::Timer()
 
 uint32_t Timer::millis()
 {
+	uint32_t m;
 	// Disable interrupts to prevent concurrent access
 	uint8_t status = SREG;
 	cli();
 	
+	m = tick_ms;
+	
 	// Re-enable
 	SREG = status;
 	
-	return tick_ms;
+	return m;
 }
 
 //ISR for ms counter
 ISR(TCB0_INT_vect) 
 {
-	timer.tick_ms++;
+	uint32_t m = timer.tick_ms;
+	m++;
+	timer.tick_ms = m;
 	TCB0.INTFLAGS = TCB_CAPT_bm;
 }
 

@@ -30,6 +30,7 @@ int main(void)
 	system_init();
 	
 	//debug.init(115200);
+	i2c_regs.regs.settings.debug = 0; // we're using the debug reg to count number of uart resets
 	
 	blue_wire = OneWire();
 	blue_wire.init(25000);
@@ -49,7 +50,7 @@ int main(void)
     while (1) 
     {
 	    wdt_reset();
-	    if(timer.millis() - start_time >= 1000) 
+	    if(timer.millis() - start_time >= 800) 
 		{
 		    start_time = timer.millis();
 			uint8_t* data_out = heater.prepare_tx_packet();
