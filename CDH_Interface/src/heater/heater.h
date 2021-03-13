@@ -48,15 +48,16 @@ typedef struct {
 		uint8_t last_error; //				33
 	} heater;
 	struct {
-		uint8_t config_a; //				34
-		uint8_t status_a; //				35
-		uint8_t debug; //					36
+		uint8_t version; //					34
+		uint8_t config_a; //				35
+		uint8_t status_a; //				36
+		uint8_t debug; //					37
 	} settings;
 } i2c_reg_t;
 
 typedef union {
 	i2c_reg_t regs;
-	uint8_t data[37];
+	uint8_t data[38];
 } i2c_reg_union_t;
 
 extern i2c_reg_union_t i2c_regs;
