@@ -27,6 +27,8 @@
 #define MODE_HZ					0xCD
 #define MODE_TEMP				0x32
 
+#define FIRMWARE_VERSION		10 // factor of 0.1, 10 = 1.0
+
 // Config A bit positions
 #define CFG_A_HEATER_STORE		0 // store the value in heater eeprom, i.e. mimic LCD not rotary
 
@@ -158,6 +160,7 @@ Heater::Heater()
 	i2c_regs.regs.controller.config.glow_plug_power = 5;
 	// Settings
 	i2c_regs.regs.settings.config_a = (1 << CFG_A_HEATER_STORE) | 0;
+	i2c_regs.regs.settings.version = FIRMWARE_VERSION;
 	
 	// Heater 
 	i2c_regs.regs.heater.on = HTR_DISCONNECTED;
