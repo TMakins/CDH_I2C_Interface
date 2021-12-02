@@ -1,3 +1,4 @@
+# Schematic Notes
 * This schematic was not originally intended to be publicly published, so is far from the neatest
 * The header J5 is intended to be pin compatible with the ESP32 dev board, but is upside down
 * J9 and J8 can be used to add/remove the I2C pull ups as needed (if no other pull ups are already present)
