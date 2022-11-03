@@ -1,0 +1,1 @@
+Atmel Studio 7 (now Microchip Studio) project. 
